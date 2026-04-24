@@ -4,6 +4,9 @@ const { URL } = require("url");
 
 const PORT = Number(process.env.PORT || 3001);
 const ALBATO_WEBHOOK_URL = process.env.ALBATO_WEBHOOK_URL;
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const RATE_LIMIT_MAX_REQUESTS = 10;
+const rateLimitStore = new Map();
 
 if (!ALBATO_WEBHOOK_URL) {
   console.error("Missing ALBATO_WEBHOOK_URL environment variable.");
@@ -16,6 +19,17 @@ function sendJson(response, statusCode, payload) {
     "Cache-Control": "no-store",
   });
   response.end(JSON.stringify(payload));
+}
+
+function logLeadEvent(event, details = {}) {
+  console.log(
+    JSON.stringify({
+      scope: "lead-capture",
+      event,
+      timestamp: new Date().toISOString(),
+      ...details,
+    })
+  );
 }
 
 function collectBody(request) {
@@ -35,6 +49,23 @@ function collectBody(request) {
 
 function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function getClientIp(request) {
+  const forwarded = request.headers["x-forwarded-for"];
+  if (typeof forwarded === "string" && forwarded.trim()) {
+    return forwarded.split(",")[0].trim();
+  }
+  return request.socket.remoteAddress || "unknown";
+}
+
+function isRateLimited(ip) {
+  const now = Date.now();
+  const timestamps = rateLimitStore.get(ip) || [];
+  const fresh = timestamps.filter((timestamp) => now - timestamp < RATE_LIMIT_WINDOW_MS);
+  fresh.push(now);
+  rateLimitStore.set(ip, fresh);
+  return fresh.length > RATE_LIMIT_MAX_REQUESTS;
 }
 
 function postToAlbato({ email, source, brandHandle, honeypot, createdAt }) {
@@ -82,6 +113,8 @@ function postToAlbato({ email, source, brandHandle, honeypot, createdAt }) {
 }
 
 const server = http.createServer(async (request, response) => {
+  const clientIp = getClientIp(request);
+
   if (request.url === "/api/health" && request.method === "GET") {
     sendJson(response, 200, { ok: true });
     return;
@@ -93,11 +126,25 @@ const server = http.createServer(async (request, response) => {
   }
 
   if (request.method !== "POST") {
+    logLeadEvent("method_not_allowed", {
+      ip: clientIp,
+      method: request.method,
+      path: request.url,
+    });
     sendJson(response, 405, { ok: false, error: "Method not allowed." });
     return;
   }
 
   try {
+    if (isRateLimited(clientIp)) {
+      logLeadEvent("rate_limited", {
+        ip: clientIp,
+        path: request.url,
+      });
+      sendJson(response, 429, { ok: false, error: "Too many requests." });
+      return;
+    }
+
     const rawBody = await collectBody(request);
     const payload = rawBody ? JSON.parse(rawBody) : {};
     const email = String(payload.email || "").trim().toLowerCase();
@@ -107,16 +154,31 @@ const server = http.createServer(async (request, response) => {
     const createdAt = new Date().toISOString();
 
     if (honeypot) {
+      logLeadEvent("honeypot_blocked", {
+        ip: clientIp,
+        source,
+      });
       sendJson(response, 200, { ok: true });
       return;
     }
 
     if (!isValidEmail(email)) {
+      logLeadEvent("invalid_email", {
+        ip: clientIp,
+        source,
+        emailPreview: email.slice(0, 3),
+      });
       sendJson(response, 400, { ok: false, error: "Invalid email." });
       return;
     }
 
     await postToAlbato({ email, source, brandHandle, honeypot, createdAt });
+    logLeadEvent("lead_forwarded", {
+      ip: clientIp,
+      source,
+      emailHashHint: `${email.slice(0, 3)}***${email.slice(email.indexOf("@"))}`,
+      hasBrandHandle: Boolean(brandHandle),
+    });
     sendJson(response, 200, {
       ok: true,
       lead: {
@@ -127,7 +189,10 @@ const server = http.createServer(async (request, response) => {
       },
     });
   } catch (error) {
-    console.error("Lead capture error:", error);
+    logLeadEvent("lead_capture_error", {
+      ip: clientIp,
+      message: error.message,
+    });
     sendJson(response, 500, { ok: false, error: "Lead capture failed." });
   }
 });
