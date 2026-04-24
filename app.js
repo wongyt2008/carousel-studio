@@ -1,7 +1,6 @@
 const STORAGE_KEY = "carousel-studio-openai-key";
 const LEAD_STORAGE_KEY = "carousel-studio-lead";
-const ALBATO_WEBHOOK_URL =
-  "https://h.albato.com/wh/38/1lfui3h/TzobcuRXCvcxZFtTxq3iOCFpvo2oGfAgE1tFEdhrHmM/";
+const LEAD_CAPTURE_ENDPOINT = "/api/lead-capture";
 
 const SIZE_OPTIONS = {
   square: {
@@ -294,22 +293,25 @@ async function submitLeadForm() {
 }
 
 async function submitLeadToAlbato({ email, source, brandHandle, honeypot }) {
-  const payload = new URLSearchParams();
-  payload.set("email", email);
-  payload.set("source", source);
-  payload.set("brand_handle", brandHandle || "");
   const createdAt = new Date().toISOString();
-  payload.set("created_at", createdAt);
-  payload.set("honeypot", honeypot);
-
-  await fetch(ALBATO_WEBHOOK_URL, {
+  const response = await fetch(LEAD_CAPTURE_ENDPOINT, {
     method: "POST",
-    mode: "no-cors",
     headers: {
-      "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+      "Content-Type": "application/json",
     },
-    body: payload.toString(),
+    body: JSON.stringify({
+      email,
+      source,
+      brand_handle: brandHandle || "",
+      created_at: createdAt,
+      honeypot,
+    }),
   });
+
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || !result?.ok) {
+    throw new Error(result?.error || "提交電子郵件失敗，請稍後再試。");
+  }
 
   return {
     email,
