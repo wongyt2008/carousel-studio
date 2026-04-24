@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Carousel Studio</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand-block">
+          <p class="eyebrow">ChatGPT Image Carousel</p>
+          <h1>Carousel Studio</h1>
+          <p class="lede">
+            輸入貼文內容，先由 ChatGPT 規劃每一頁，再用 GPT Image 逐頁生成 carousel。
+          </p>
+        </div>
+
+        <form id="generator-form" class="control-stack">
+          <label class="field">
+            <span>OpenAI API Key</span>
+            <input
+              id="api-key"
+              name="apiKey"
+              type="password"
+              placeholder="sk-..."
+              autocomplete="off"
+            />
+          </label>
+
+          <label class="field">
+            <span>Carousel 內容</span>
+            <textarea
+              id="content"
+              name="content"
+              rows="12"
+              placeholder="只需貼上主題、內容草稿或幾個重點，App 會自動規劃每一頁並生成 carousel..."
+            ></textarea>
+          </label>
+
+          <label class="field">
+            <span>統一風格</span>
+            <textarea
+              id="style-brief"
+              name="styleBrief"
+              rows="5"
+              placeholder="例如：極簡科技感、黑底螢光綠點綴、粗體無襯線字、像 Gamma 一樣有一致的模板系統、留白乾淨、資訊層級清楚。"
+            ></textarea>
+          </label>
+
+          <div class="grid-two">
+            <label class="field">
+              <span>Brand handle</span>
+              <input
+                id="brand-handle"
+                name="brandHandle"
+                type="text"
+                placeholder="@isaac.startup"
+              />
+            </label>
+
+            <label class="field">
+              <span>Handle 位置</span>
+              <select id="handle-position" name="handlePosition">
+                <option value="bottom-right" selected>右下角</option>
+                <option value="bottom-left">左下角</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="field">
+            <span>參考圖片（最多 5 張）</span>
+            <label class="upload-drop" for="reference-images">
+              <input
+                id="reference-images"
+                name="referenceImages"
+                type="file"
+                accept="image/*"
+                multiple
+              />
+              <div class="upload-copy">
+                <strong>上傳參考圖</strong>
+                <p>系統會先分析圖片，提煉成 Image DNA，再套用到整套 carousel。</p>
+              </div>
+            </label>
+            <div id="reference-list" class="reference-list" hidden></div>
+          </div>
+
+          <div class="grid-two">
+            <label class="field">
+              <span>頁數</span>
+              <select id="slide-count" name="slideCount">
+                <option value="3">3 頁</option>
+                <option value="5" selected>5 頁</option>
+                <option value="10">10 頁</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>尺寸</span>
+              <select id="size" name="size">
+                <option value="square">1 : 1</option>
+                <option value="portrait34">3 : 4</option>
+                <option value="igPortrait" selected>1080 × 1350</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="grid-two">
+            <label class="field">
+              <span>匯出格式</span>
+              <select id="export-format" name="exportFormat">
+                <option value="pdf" selected>Export PDF</option>
+                <option value="jpeg">Export JPEG</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>圖片品質</span>
+              <select id="quality" name="quality">
+                <option value="auto">Auto</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low" selected>Low</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="grid-two">
+            <label class="field">
+              <span>規劃模型</span>
+              <select id="planner-model" name="plannerModel">
+                <option value="gpt-5.4" selected>gpt-5.4</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>圖片模型</span>
+              <select id="image-model" name="imageModel">
+                <option value="gpt-image-2" selected>gpt-image-2</option>
+                <option value="gpt-image-1.5">gpt-image-1.5</option>
+                <option value="gpt-image-1">gpt-image-1</option>
+                <option value="gpt-image-1-mini">gpt-image-1-mini</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="button-row">
+            <button id="plan-btn" type="button" class="secondary">先規劃</button>
+            <button id="generate-btn" type="submit" class="primary">規劃並生成</button>
+          </div>
+
+          <div class="button-row">
+            <button id="export-pdf-btn" type="button" class="ghost" disabled>
+              匯出 PDF
+            </button>
+            <button id="export-jpeg-btn" type="button" class="ghost" disabled>
+              匯出 JPEG
+            </button>
+          </div>
+        </form>
+
+        <div class="status-panel">
+          <div class="status-label">Status</div>
+          <div id="status-text">等待輸入內容。</div>
+          <div class="cost-row">
+            <div class="status-label">本輪總成本</div>
+            <div id="cost-text">$0.00</div>
+          </div>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <section class="hero-strip">
+          <div>
+            <p class="eyebrow">Preview</p>
+            <h2>每頁設計規劃與生成結果</h2>
+          </div>
+          <div class="pill-row">
+            <span class="pill">AI page planning</span>
+            <span class="pill">GPT image generation</span>
+            <span class="pill">PDF / JPEG export</span>
+          </div>
+        </section>
+
+        <section class="board">
+          <div id="loading-panel" class="loading-panel" hidden>
+            <div class="loading-head">
+              <div>
+                <p class="eyebrow">Processing</p>
+                <h3>正在處理你的 carousel</h3>
+              </div>
+              <div class="loading-spinner" aria-hidden="true"></div>
+            </div>
+            <p id="loading-text" class="loading-text">正在等待開始。</p>
+          </div>
+          <div id="style-summary" class="style-summary" hidden>
+            <div class="style-summary-head">
+              <div>
+                <p class="eyebrow">Shared Style</p>
+                <h3>本輪統一風格</h3>
+              </div>
+              <span id="style-summary-source" class="style-summary-badge"></span>
+            </div>
+            <p id="style-summary-text" class="style-summary-text"></p>
+          </div>
+          <details id="image-dna-summary" class="style-summary collapsible-summary" hidden>
+            <summary class="style-summary-head style-summary-toggle">
+              <div>
+                <p class="eyebrow">Image DNA</p>
+                <h3>參考圖片分析</h3>
+              </div>
+              <div class="style-summary-toggle-right">
+                <span class="style-summary-badge">Vision analysis</span>
+                <span class="chevron" aria-hidden="true"></span>
+              </div>
+            </summary>
+            <p id="image-dna-text" class="style-summary-text"></p>
+          </details>
+          <div id="design-system-summary" class="style-summary" hidden>
+            <div class="style-summary-head">
+              <div>
+                <p class="eyebrow">Design System</p>
+                <h3>版型系統與共通規則</h3>
+              </div>
+              <span class="style-summary-badge">Layout families</span>
+            </div>
+            <p id="design-system-text" class="style-summary-text"></p>
+          </div>
+          <div id="slides" class="slides-grid empty-state">
+            <div class="empty-copy">
+              <h3>這裡會出現你的 carousel</h3>
+              <p>先貼上內容，選好頁數與尺寸，然後開始規劃或生成。</p>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div id="lead-modal" class="modal-shell" hidden>
+      <div id="lead-backdrop" class="modal-backdrop"></div>
+      <div
+        class="modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="lead-modal-title"
+      >
+        <div class="modal-head">
+          <div>
+            <p class="eyebrow">電子郵件驗證</p>
+            <h3 id="lead-modal-title">開始生成前，請先留下電子郵件</h3>
+          </div>
+          <button
+            id="lead-close-btn"
+            type="button"
+            class="icon-btn"
+            aria-label="關閉"
+          >
+            ×
+          </button>
+        </div>
+        <p class="modal-copy">
+          提交電子郵件後即可開始生成 carousel；同一裝置只需填寫一次。
+        </p>
+        <form id="lead-form" class="modal-form">
+          <label class="field">
+            <span>電子郵件</span>
+            <input
+              id="lead-email"
+              name="leadEmail"
+              type="email"
+              placeholder="you@example.com"
+              autocomplete="email"
+              required
+            />
+          </label>
+
+          <label class="field honeypot-field" aria-hidden="true" tabindex="-1">
+            <span>網站</span>
+            <input
+              id="lead-honeypot"
+              name="companyWebsite"
+              type="text"
+              autocomplete="off"
+              tabindex="-1"
+            />
+          </label>
+
+          <div class="modal-actions">
+            <button id="lead-submit-btn" type="submit" class="primary">
+              提交並開始生成
+            </button>
+          </div>
+          <p id="lead-help-text" class="modal-help">
+            我們只會使用此電子郵件作名單收集與後續聯絡。
+          </p>
+        </form>
+      </div>
+    </div>
+
+    <template id="slide-template">
+      <article class="slide-card">
+        <div class="slide-card-head">
+          <div>
+            <p class="slide-index"></p>
+            <h3 class="slide-title"></h3>
+          </div>
+          <span class="slide-badge">Planned</span>
+        </div>
+        <div class="slide-preview-wrap">
+          <div class="slide-preview">
+            <img class="slide-image" alt="" hidden />
+            <div class="slide-placeholder">未生成</div>
+          </div>
+        </div>
+        <div class="slide-copy"></div>
+        <div class="slide-meta"></div>
+        <div class="slide-edit">
+          <label class="field">
+            <span>想改這張圖什麼？</span>
+            <textarea class="slide-comment" rows="4" placeholder="例如：把底部 CTA 改成「留言 Claude，加入五天的 Claude 101 課程。」保留原本系列風格、角色和版式。"></textarea>
+          </label>
+          <button type="button" class="ghost slide-regenerate-btn">重生成這一頁</button>
+        </div>
+      </article>
+    </template>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
