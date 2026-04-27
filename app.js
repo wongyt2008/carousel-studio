@@ -1,6 +1,4 @@
 const STORAGE_KEY = "carousel-studio-openai-key";
-const LEAD_STORAGE_KEY = "carousel-studio-lead";
-const LEAD_CAPTURE_ENDPOINT = "/api/lead-capture";
 
 const SIZE_OPTIONS = {
   square: {
@@ -61,8 +59,6 @@ const state = {
   currentDesignSystem: null,
   referenceImages: [],
   totalCost: 0,
-  lead: null,
-  leadModalResolver: null,
   cache: {
     imageDna: new Map(),
     designSystem: new Map(),
@@ -102,25 +98,12 @@ const elements = {
   designSystemText: document.querySelector("#design-system-text"),
   slides: document.querySelector("#slides"),
   template: document.querySelector("#slide-template"),
-  leadModal: document.querySelector("#lead-modal"),
-  leadBackdrop: document.querySelector("#lead-backdrop"),
-  leadForm: document.querySelector("#lead-form"),
-  leadEmail: document.querySelector("#lead-email"),
-  leadHoneypot: document.querySelector("#lead-honeypot"),
-  leadHelpText: document.querySelector("#lead-help-text"),
-  leadSubmitButton: document.querySelector("#lead-submit-btn"),
-  leadCloseButton: document.querySelector("#lead-close-btn"),
 };
 
 elements.apiKey.value = localStorage.getItem(STORAGE_KEY) || "";
 elements.apiKey.addEventListener("input", () => {
   localStorage.setItem(STORAGE_KEY, elements.apiKey.value.trim());
 });
-state.lead = readStoredLead();
-if (state.lead?.email) {
-  elements.leadEmail.value = state.lead.email;
-}
-elements.leadModal.hidden = true;
 
 elements.referenceImages.addEventListener("change", async (event) => {
   try {
@@ -150,19 +133,6 @@ elements.exportPdfButton.addEventListener("click", () => {
 
 elements.exportJpegButton.addEventListener("click", () => {
   exportJpegs().catch(handleError);
-});
-
-elements.leadForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  submitLeadForm().catch(handleError);
-});
-
-elements.leadBackdrop.addEventListener("click", () => {
-  dismissLeadModal();
-});
-
-elements.leadCloseButton.addEventListener("click", () => {
-  dismissLeadModal();
 });
 
 renderTotalCost();
@@ -222,112 +192,6 @@ function currentSettings() {
   return validateInputs();
 }
 
-function readStoredLead() {
-  try {
-    const raw = localStorage.getItem(LEAD_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!parsed?.email) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-function saveLead(lead) {
-  state.lead = lead;
-  localStorage.setItem(LEAD_STORAGE_KEY, JSON.stringify(lead));
-}
-
-function openLeadModal() {
-  elements.leadModal.hidden = false;
-  elements.leadSubmitButton.disabled = false;
-  elements.leadHelpText.textContent = "我們只會使用此電子郵件作名單收集與後續聯絡。";
-  requestAnimationFrame(() => {
-    elements.leadEmail.focus();
-  });
-}
-
-function dismissLeadModal() {
-  elements.leadModal.hidden = true;
-  elements.leadSubmitButton.disabled = false;
-  elements.leadHelpText.textContent = "你已取消提交電子郵件，尚未開始生成。";
-  if (state.leadModalResolver) {
-    state.leadModalResolver.reject(new Error("LEAD_CAPTURE_CANCELLED"));
-    state.leadModalResolver = null;
-  }
-}
-
-function ensureLeadCaptured() {
-  if (state.lead?.email) {
-    return Promise.resolve(state.lead);
-  }
-
-  return new Promise((resolve, reject) => {
-    state.leadModalResolver = { resolve, reject };
-    openLeadModal();
-  });
-}
-
-async function submitLeadForm() {
-  const email = elements.leadEmail.value.trim().toLowerCase();
-  const honeypot = elements.leadHoneypot.value.trim();
-
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    throw new Error("請先輸入有效的電子郵件地址。");
-  }
-
-  elements.leadSubmitButton.disabled = true;
-  elements.leadHelpText.textContent = "正在提交電子郵件，稍後便會開始生成...";
-
-  const lead = await submitLeadToAlbato({
-    email,
-    source: "carousel-app",
-    brandHandle: elements.brandHandle.value.trim(),
-    honeypot,
-  });
-
-  saveLead(lead);
-  elements.leadModal.hidden = true;
-  elements.leadSubmitButton.disabled = false;
-  elements.leadHelpText.textContent = "我們只會使用此電子郵件作名單收集與後續聯絡。";
-  elements.leadHoneypot.value = "";
-
-  if (state.leadModalResolver) {
-    state.leadModalResolver.resolve(lead);
-    state.leadModalResolver = null;
-  }
-}
-
-async function submitLeadToAlbato({ email, source, brandHandle, honeypot }) {
-  const createdAt = new Date().toISOString();
-  const response = await fetch(LEAD_CAPTURE_ENDPOINT, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      email,
-      source,
-      brand_handle: brandHandle || "",
-      created_at: createdAt,
-      honeypot,
-    }),
-  });
-
-  const result = await response.json().catch(() => ({}));
-  if (!response.ok || !result?.ok) {
-    throw new Error(result?.error || "提交電子郵件失敗，請稍後再試。");
-  }
-
-  return {
-    email,
-    source,
-    brandHandle: brandHandle || "",
-    capturedAt: createdAt,
-  };
-}
-
 function resetRunCost() {
   state.totalCost = 0;
   renderTotalCost();
@@ -360,7 +224,6 @@ async function runPlanningOnly() {
 }
 
 async function runPlanningAndGeneration() {
-  await ensureLeadCaptured();
   const settings = validateInputs();
   resetRunCost();
   setBusy(true);
@@ -1580,10 +1443,6 @@ function crc32(bytes) {
 
 function handleError(error) {
   console.error(error);
-  if (error?.message === "LEAD_CAPTURE_CANCELLED") {
-    setStatus("已取消提交電子郵件，尚未開始生成。");
-    return;
-  }
   if (isMissingContentError(error)) {
     elements.content.focus();
     window.alert("請先填寫 Carousel 內容。");

@@ -261,67 +261,6 @@
       </main>
     </div>
 
-    <div id="lead-modal" class="modal-shell" hidden>
-      <div id="lead-backdrop" class="modal-backdrop"></div>
-      <div
-        class="modal-card"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="lead-modal-title"
-      >
-        <div class="modal-head">
-          <div>
-            <p class="eyebrow">電子郵件驗證</p>
-            <h3 id="lead-modal-title">開始生成前，請先留下電子郵件</h3>
-          </div>
-          <button
-            id="lead-close-btn"
-            type="button"
-            class="icon-btn"
-            aria-label="關閉"
-          >
-            ×
-          </button>
-        </div>
-        <p class="modal-copy">
-          提交電子郵件後即可開始生成 carousel；同一裝置只需填寫一次。
-        </p>
-        <form id="lead-form" class="modal-form">
-          <label class="field">
-            <span>電子郵件</span>
-            <input
-              id="lead-email"
-              name="leadEmail"
-              type="email"
-              placeholder="you@example.com"
-              autocomplete="email"
-              required
-            />
-          </label>
-
-          <label class="field honeypot-field" aria-hidden="true" tabindex="-1">
-            <span>網站</span>
-            <input
-              id="lead-honeypot"
-              name="companyWebsite"
-              type="text"
-              autocomplete="off"
-              tabindex="-1"
-            />
-          </label>
-
-          <div class="modal-actions">
-            <button id="lead-submit-btn" type="submit" class="primary">
-              提交並開始生成
-            </button>
-          </div>
-          <p id="lead-help-text" class="modal-help">
-            我們只會使用此電子郵件作名單收集與後續聯絡。
-          </p>
-        </form>
-      </div>
-    </div>
-
     <template id="slide-template">
       <article class="slide-card">
         <div class="slide-card-head">
