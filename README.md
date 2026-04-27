@@ -252,4 +252,4 @@ creative-tools
 
 ## License
 
-目前尚未加入授權條款。
+本專案使用 [MIT License](./LICENSE)。
