@@ -4,6 +4,15 @@
 
 Carousel Studio is a browser-based tool for generating Instagram or LinkedIn carousel posts with ChatGPT planning and GPT Image generation.
 
+It turns a rough content draft into a polished, multi-slide visual sequence with:
+
+- slide-by-slide planning
+- shared style direction
+- reference-image analysis
+- layout system generation
+- page-by-page image output
+- PDF / ZIP export
+
 You paste your content, choose a slide count and format, and the app:
 
 1. plans the carousel page by page
@@ -13,6 +22,18 @@ You paste your content, choose a slide count and format, and the app:
 
 This public branch intentionally keeps only the **core carousel generation workflow**.  
 Private lead generation, webhook integrations, and production-only backend logic are not included here.
+
+- Live demo: [carouselapp.isaac.mba](https://carouselapp.isaac.mba)
+- Public repo purpose: show the core product idea and implementation clearly
+
+## Highlights
+
+- Built with plain HTML, CSS, and JavaScript
+- Uses GPT for planning and GPT Image for rendering
+- Supports `1:1`, `3:4`, `16:9`, and `1080 × 1350`
+- Lets each slide choose a different layout family while keeping a shared visual system
+- Accepts reference images and extracts visual DNA before generation
+- Supports single-slide revision and full export
 
 ## What It Does
 
@@ -43,6 +64,12 @@ The interesting part is not just image generation. The app combines:
 - page-by-page rendering
 
 That makes it more like a lightweight AI-assisted content production workflow than a single prompt box.
+
+## Demo
+
+Live site:
+
+[https://carouselapp.isaac.mba](https://carouselapp.isaac.mba)
 
 ## Stack
 
@@ -98,18 +125,38 @@ The deployed version I use privately may include extra production integrations o
 
 This repo is intended to show the **core product idea and implementation**, not every private workflow around it.
 
-## Demo
-
-Live site:
-
-[https://carouselapp.isaac.mba](https://carouselapp.isaac.mba)
-
 ## Good Fit For
 
 - creators making social carousels
 - marketers testing AI-assisted visual workflows
 - builders exploring prompt-to-design systems
 - anyone curious about combining planning + image generation in one UI
+
+## Suggested GitHub Metadata
+
+**Repository description**
+
+Generate Instagram and LinkedIn carousels with ChatGPT planning, GPT Image rendering, reference-image analysis, and PDF / ZIP export.
+
+**Suggested topics**
+
+```text
+ai
+openai
+chatgpt
+gpt-image
+carousel
+instagram
+linkedin
+social-media
+content-creation
+image-generation
+javascript
+frontend
+prompt-engineering
+design-system
+creative-tools
+```
 
 ## License
 
